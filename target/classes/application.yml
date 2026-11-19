@@ -1,0 +1,75 @@
+server:
+  port: 5000
+
+spring:
+  application:
+    name: shop
+
+  datasource:
+    # serverTimezone=UTC matches Sequelize's default (+00:00) so existing DATETIME values read back correctly.
+    url: jdbc:mysql://localhost:3306/ecommerce_db?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: MyNewPassword123!
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 0
+      connection-timeout: 30000
+      idle-timeout: 10000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      # The schema is owned by the existing MySQL database / Flyway, never by Hibernate.
+      ddl-auto: none
+      naming:
+        # Use column names exactly as written in @Column/@JoinColumn
+        # (one table, product_variant_images, has camelCase createdAt/updatedAt columns).
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+    show-sql: false
+
+  flyway:
+    enabled: true
+    # Existing database already has tables: adopt it as the baseline instead of failing.
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: sinha.debanjan708@gmail.com
+    password: jplc yjbt zweq sqhe
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          ssl:
+            enable: false
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 25MB
+
+  jackson:
+    default-property-inclusion: always
+
+app:
+  upload-dir: ./uploads
+  jwt:
+    secret: supersecretkey123
+    refresh-secret: My Refresh Key
+    access-ttl-minutes: 15
+    refresh-ttl-days: 7
+  mail:
+    from: sinha.debanjan708@gmail.com
+    sender-name: Niboscule Tshirts
