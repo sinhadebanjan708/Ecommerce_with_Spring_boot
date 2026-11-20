@@ -13,7 +13,10 @@ import com.elvero.shop.util.SlugUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,24 +58,56 @@ public class SubcategoryService {
     }
 
     @Transactional(readOnly = true)
-    public List<SubcategoryResponse> listAll() {
+    public Page<SubcategoryResponse> listAll(
+            int pageIndex,
+            int pageSize,
+            String search
+    ) {
+        Pageable pageable = PageRequest.of(
+                pageIndex,
+                pageSize,
+                Sort.by(Sort.Direction.DESC, "id")
+        );
 
-        List<Subcategory> subcategories = subcategoryRepository.findAll();
+        // Step 1: Fetch paginated subcategories
 
+        String searchTerm = (search == null || search.isBlank())
+                ? null
+                : search.trim();
+        System.out.println("Search parameter received: " + search);
+        System.out.println("Normalized search: " + searchTerm);
+        Page<Subcategory> subcategoryPage =
+                subcategoryRepository.findAllWithSearch(searchTerm, pageable);
+
+        List<Subcategory> subcategories = subcategoryPage.getContent();
+
+        // Step 2: Avoid an unnecessary count query for an empty page
+        if (subcategories.isEmpty()) {
+            return subcategoryPage.map(subcategory -> toResponse(subcategory, 0L));
+        }
+
+        // Step 3: Get IDs from the current page
+        List<Long> subcategoryIds = subcategories.stream()
+                .map(Subcategory::getId)
+                .toList();
+
+        // Step 4: Fetch product counts in one query
         Map<Long, Long> productCountMap =
-                subcategoryRepository.findProductCountsBySubcategory()
+                subcategoryRepository
+                        .findProductCountsBySubcategoryIds(subcategoryIds)
                         .stream()
                         .collect(Collectors.toMap(
                                 SubcategoryRepository.SubcategoryProductCountProjection::getSubcategoryId,
                                 SubcategoryRepository.SubcategoryProductCountProjection::getProductCount
                         ));
 
-        return subcategories.stream()
-                .map(subcategory -> toResponse(
+        // Step 5: Preserve pagination metadata
+        return subcategoryPage.map(subcategory ->
+                toResponse(
                         subcategory,
                         productCountMap.getOrDefault(subcategory.getId(), 0L)
-                ))
-                .toList();
+                )
+        );
     }
 
 //    @Transactional(readOnly = true)
@@ -100,8 +135,12 @@ public class SubcategoryService {
                                 categoryId, "active"
                         );
 
+        List<Long> subcategoryIds = subcategories.stream()
+                .map(Subcategory::getId)
+                .toList();
+
         Map<Long, Long> productCountMap =
-                subcategoryRepository.findProductCountsBySubcategory()
+                subcategoryRepository.findProductCountsBySubcategoryIds(subcategoryIds)
                         .stream()
                         .collect(Collectors.toMap(
                                 SubcategoryRepository.SubcategoryProductCountProjection::getSubcategoryId,

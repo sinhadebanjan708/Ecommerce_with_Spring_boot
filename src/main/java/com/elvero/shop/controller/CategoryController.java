@@ -46,7 +46,7 @@ public class CategoryController {
 
 
     @GetMapping("/")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER','ADMIN')")
     public ApiResponse<PageResponse<Category>> list(
             @RequestParam(defaultValue = "0") int pageIndex,
             @RequestParam(defaultValue = "10") int pageSize,

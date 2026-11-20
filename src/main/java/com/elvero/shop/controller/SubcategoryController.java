@@ -8,6 +8,8 @@ import com.elvero.shop.service.FileStorageService;
 import com.elvero.shop.service.SubcategoryService;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -43,11 +45,18 @@ public class SubcategoryController {
 
     @GetMapping("/")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
-    public ApiResponse<List<SubcategoryResponse>> list() {
-        return ApiResponse.ok(subcategoryService.listAll());
+    public ApiResponse<Page<SubcategoryResponse>> list(
+            @RequestParam(defaultValue = "0") int pageIndex,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String search
+    ) {
+        return ApiResponse.ok(
+                subcategoryService.listAll(pageIndex, pageSize, search)
+        );
     }
 
     @GetMapping("/category/{categoryId}")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     public ApiResponse<List<SubcategoryResponse>> byCategory(@PathVariable Long categoryId) {
         return ApiResponse.ok(subcategoryService.listByCategory(categoryId));
     }

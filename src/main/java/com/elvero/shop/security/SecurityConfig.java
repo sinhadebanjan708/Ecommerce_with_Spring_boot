@@ -79,13 +79,19 @@ public class SecurityConfig {
 
                         // Admin area
                         .requestMatchers(BASE + "/admin/**").hasRole("ADMIN")
-                        .requestMatchers(BASE + "/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,
+                                BASE + "/categories/**"
+                        ).permitAll()
+//                        .requestMatchers(BASE + "/categories/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, BASE + "/sub-categories/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, BASE + "/sub-categories/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, BASE + "/sub-categories/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated())
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(
+                        new JwtAuthenticationFilter(jwtService, entryPoint),
+                        UsernamePasswordAuthenticationFilter.class
+                );
         return http.build();
     }
 
