@@ -17,6 +17,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/ecommerce/admin")
@@ -24,7 +26,8 @@ import org.springframework.web.multipart.MultipartFile;
 public class AdminProductController {
 
     private final AdminProductService service;
-
+    private static final Logger log =
+            LoggerFactory.getLogger(AdminProductController.class);
     public AdminProductController(AdminProductService service) {
         this.service = service;
     }
@@ -47,17 +50,33 @@ public class AdminProductController {
     }
 
     @GetMapping("/products")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     public ApiResponse<Map<String, Object>> list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long subcategoryId,
-            @RequestParam(required = false) String search) {
-        PageMetaAndList result = service.listProducts(page, limit, status, categoryId, subcategoryId, search);
+            @RequestParam(required = false) String search
+    ) {
+        log.info("========== PRODUCT LIST API CALLED ==========");
+        log.info("Category ID: {}", categoryId);
+        log.info("Subcategory ID: {}", subcategoryId);
+        System.out.println("Category ID: " + categoryId);
+        System.out.println("Subcategory ID: " + subcategoryId);
+        PageMetaAndList result = service.listProducts(
+                page,
+                limit,
+                status,
+                categoryId,
+                subcategoryId,
+                search
+        );
+
         return ApiResponse.ok(Map.of(
                 "data", result.items(),
-                "pagination", result.meta()));
+                "pagination", result.meta()
+        ));
     }
 
     @GetMapping("/products/{productId}")

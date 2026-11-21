@@ -29,7 +29,7 @@ public class SubcategoryController {
         this.fileStorageService = fileStorageService;
     }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SubcategoryResponse>> create(
             @RequestParam Long categoryId,
@@ -73,11 +73,12 @@ public class SubcategoryController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String subcategoryName,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String slug,
             @RequestParam(required = false) MultipartFile image) {
         String path = image != null ? fileStorageService.store(image, "subcategory") : null;
         return ApiResponse.ok("Subcategory updated successfully",
                 subcategoryService.update(id,
-                        new UpdateSubcategoryRequest(categoryId, subcategoryName, status), path));
+                        new UpdateSubcategoryRequest(categoryId, subcategoryName, status, slug), path));
     }
 
     @DeleteMapping("/{id}")

@@ -15,6 +15,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.elvero.shop.specification.ProductSpecification;
+import org.springframework.data.jpa.domain.Specification;
 
 @Service
 public class AdminProductService {
@@ -84,26 +86,54 @@ public class AdminProductService {
         return toProductResponse(p, List.of());
     }
 
+
     @Transactional(readOnly = true)
-    public PageMetaAndList listProducts(int page, int limit, String status, Long categoryId, Long subcategoryId, String search) {
+    public PageMetaAndList listProducts(
+            int page,
+            int limit,
+            String status,
+            Long categoryId,
+            Long subcategoryId,
+            String search
+    ) {
         int p = Math.max(page, 1);
         int size = Math.min(Math.max(limit, 1), 100);
-        PageRequest pr = PageRequest.of(p - 1, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Page<Product> result;
-        if (categoryId != null && status != null) {
-            result = productRepository.findByCategoryIdAndStatusIn(categoryId, List.of(status), pr);
-        } else if (subcategoryId != null && status != null) {
-            result = productRepository.findBySubcategoryIdAndStatusIn(subcategoryId, List.of(status), pr);
-        } else if (status != null) {
-            result = productRepository.findByStatusIn(List.of(status), pr);
-        } else {
-            result = productRepository.findAll(pr);
-        }
+        PageRequest pr = PageRequest.of(
+                p - 1,
+                size,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
 
-        List<ProductListItem> items = result.getContent().stream().map(this::toListItem).toList();
-        return new PageMetaAndList(items, new PageMeta(result.getTotalElements(), p, size, result.getTotalPages()));
+        Specification<Product> specification =
+                ProductSpecification.filterProducts(
+                        status,
+                        categoryId,
+                        subcategoryId,
+                        search
+                );
+
+        Page<Product> result = productRepository.findAll(
+                specification,
+                pr
+        );
+
+        List<ProductListItem> items = result.getContent()
+                .stream()
+                .map(this::toListItem)
+                .toList();
+
+        return new PageMetaAndList(
+                items,
+                new PageMeta(
+                        result.getTotalElements(),
+                        p,
+                        size,
+                        result.getTotalPages()
+                )
+        );
     }
+
 
     @Transactional(readOnly = true)
     public ProductResponse getById(Long productId) {
@@ -394,17 +424,34 @@ public class AdminProductService {
 
     private ProductListItem toListItem(Product p) {
         List<ProductVariant> variants = variantRepository.findByProductId(p.getId());
-        BigDecimal min = null, max = null;
+
+        BigDecimal min = null;
+        BigDecimal max = null;
+
         for (ProductVariant v : variants) {
             if (v.getPrice() == null) continue;
-            if (min == null || v.getPrice().compareTo(min) < 0) min = v.getPrice();
-            if (max == null || v.getPrice().compareTo(max) > 0) max = v.getPrice();
+
+            if (min == null || v.getPrice().compareTo(min) < 0) {
+                min = v.getPrice();
+            }
+
+            if (max == null || v.getPrice().compareTo(max) > 0) {
+                max = v.getPrice();
+            }
         }
+
         return new ProductListItem(
-                p.getId(), p.getProductName(), p.getSlug(), p.getImage(), p.getStatus(),
+                p.getId(),
+                p.getProductName(),
+                p.getSlug(),
+                p.getImage(),
+                p.getStatus(),
                 p.getCategory() != null ? p.getCategory().getCategoryName() : null,
                 p.getSubcategory() != null ? p.getSubcategory().getSubcategoryName() : null,
-                min, max, variants.size());
+                min,
+                max,
+                variants.size()
+        );
     }
 
     private ProductResponse toProductResponse(Product p, List<ProductVariant> variants) {

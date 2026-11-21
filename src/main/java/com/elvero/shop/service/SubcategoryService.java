@@ -175,13 +175,16 @@ public class SubcategoryService {
         if (req.subcategoryName() != null && !req.subcategoryName().isBlank()
                 && !req.subcategoryName().equals(s.getSubcategoryName())) {
             s.setSubcategoryName(req.subcategoryName().trim());
-            s.setSlug(slugifyUnique(req.subcategoryName(), id));
+            s.setSlug(slugifyUnique(req.slug(), id));
         }
         if (imagePath != null) {
             s.setImage(imagePath);
         }
         if (req.status() != null) {
             s.setStatus(req.status());
+        }
+        if (req.slug() != null) {
+            s.setSlug(req.slug());
         }
         subcategoryRepository.save(s);
         return toResponse(s);

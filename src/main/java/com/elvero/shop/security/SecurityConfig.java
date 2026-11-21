@@ -78,7 +78,7 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // Admin area
-                        .requestMatchers(BASE + "/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET,BASE + "/admin/**").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 BASE + "/categories/**"
                         ).permitAll()

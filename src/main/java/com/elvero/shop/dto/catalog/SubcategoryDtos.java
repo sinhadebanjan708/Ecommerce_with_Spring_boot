@@ -16,7 +16,8 @@ public final class SubcategoryDtos {
     public record UpdateSubcategoryRequest(
             Long categoryId,
             String subcategoryName,
-            String status
+            String status,
+            String slug
     ) {}
     public record SubcategoryResponse(
             Long id,
