@@ -101,6 +101,27 @@ public class AdminProductController {
                         user.userId(), image));
     }
 
+    @GetMapping("/products/{productId}/variants")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
+    public ApiResponse<List<VariantResponse>> getProductVariants(
+            @PathVariable Long productId) {
+
+        return ApiResponse.ok(
+                service.getProductVariants(productId)
+        );
+    }
+
+    @GetMapping("/products/{productId}/variants/{variantId}")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
+    public ApiResponse<VariantResponse> getProductVariantById(
+            @PathVariable Long productId,
+            @PathVariable Long variantId) {
+
+        return ApiResponse.ok(
+                service.getProductVariantById(productId, variantId)
+        );
+    }
+
     @PostMapping(value = "/products/{productId}/variants", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<VariantResponse>> createVariant(
             @PathVariable Long productId,
@@ -127,12 +148,37 @@ public class AdminProductController {
                 .body(ApiResponse.ok("Product variant created successfully", created));
     }
 
-    @PutMapping("/products/{productId}/variants/{variantId}")
+//    @PutMapping("/products/{productId}/variants/{variantId}")
+//    public ApiResponse<VariantResponse> updateVariant(
+//            @PathVariable Long productId,
+//            @PathVariable Long variantId,
+//            @RequestBody UpdateVariantRequest body) {
+//        return ApiResponse.ok("Variant updated", service.updateVariant(productId, variantId, body));
+//    }
+
+    @PutMapping(
+            value = "/products/{productId}/variants/{variantId}",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public ApiResponse<VariantResponse> updateVariant(
             @PathVariable Long productId,
             @PathVariable Long variantId,
-            @RequestBody UpdateVariantRequest body) {
-        return ApiResponse.ok("Variant updated", service.updateVariant(productId, variantId, body));
+            @RequestPart("variant") UpdateVariantRequest body,
+            @RequestPart(value = "images", required = false)
+            List<MultipartFile> images,
+            @RequestPart(value = "retainedImageIds", required = false)
+            List<Long> retainedImageIds
+    ) {
+        return ApiResponse.ok(
+                "Variant updated",
+                service.updateVariant(
+                        productId,
+                        variantId,
+                        body,
+                        images,
+                        retainedImageIds
+                )
+        );
     }
 
     @DeleteMapping("/products/{productId}/variants/{variantId}")

@@ -126,10 +126,10 @@ public final class ProductDtos {
             String slug,
             String image,
             String status,
+            String description,
             String categoryName,
             String subcategoryName,
-            BigDecimal minPrice,
-            BigDecimal maxPrice,
+            String basePrice,
             int variantCount
     ) {}
 

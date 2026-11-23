@@ -9,6 +9,10 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Service
 public class FileStorageService {
@@ -19,6 +23,27 @@ public class FileStorageService {
 
     public FileStorageService(@Value("${app.upload-dir}") String uploadDir) {
         this.uploadRoot = Path.of(uploadDir).toAbsolutePath().normalize();
+    }
+
+    public void delete(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return;
+        }
+
+        try {
+            Path path = Paths.get(imageUrl);
+
+            if (!path.isAbsolute()) {
+                path = Paths.get("").toAbsolutePath().resolve(path);
+            }
+
+            Files.deleteIfExists(path.normalize());
+
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "Failed to delete image: " + imageUrl, e
+            );
+        }
     }
 
     public String store(MultipartFile file, String folder) {

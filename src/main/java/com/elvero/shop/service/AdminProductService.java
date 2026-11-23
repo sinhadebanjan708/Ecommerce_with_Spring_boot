@@ -178,6 +178,39 @@ public class AdminProductService {
         return toProductResponse(p, variantRepository.findByProductId(productId));
     }
 
+    @Transactional(readOnly = true)
+    public List<VariantResponse> getProductVariants(Long productId) {
+
+        // Validate product existence
+        if (!productRepository.existsById(productId)) {
+            throw ApiException.notFound("Product not found");
+        }
+
+        List<ProductVariant> variants =
+                variantRepository.findByProductId(productId);
+
+        return variants.stream()
+                .map(this::toVariantResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public VariantResponse getProductVariantById(
+            Long productId,
+            Long variantId) {
+
+        ProductVariant variant = variantRepository.findById(variantId)
+                .orElseThrow(() ->
+                        ApiException.notFound("Product variant not found")
+                );
+
+        // Ensure the variant belongs to the requested product
+        if (!variant.getProduct().getId().equals(productId)) {
+            throw ApiException.notFound("Product variant not found");
+        }
+
+        return toVariantResponse(variant);
+    }
     @Transactional
     public VariantResponse createVariant(Long productId, CreateVariantRequest req, Long adminId, List<MultipartFile> images) {
         Product product = productRepository.findById(productId)
@@ -237,19 +270,29 @@ public class AdminProductService {
         return toVariantResponse(v);
     }
 
+
     @Transactional
-    public VariantResponse updateVariant(Long productId, Long variantId, UpdateVariantRequest req) {
+    public VariantResponse updateVariant(
+            Long productId,
+            Long variantId,
+            UpdateVariantRequest req,
+            List<MultipartFile> images,
+            List<Long> retainedImageIds
+    ) {
         ProductVariant v = variantRepository.findById(variantId)
                 .orElseThrow(() -> ApiException.notFound("Variant not found"));
+
         if (!v.getProduct().getId().equals(productId)) {
             throw ApiException.notFound("Variant not found");
         }
+
         if (req.sku() != null && !req.sku().equals(v.getSku())) {
             if (variantRepository.existsBySkuAndIdNot(req.sku(), variantId)) {
                 throw ApiException.conflict("Variant SKU already exists");
             }
             v.setSku(req.sku().trim());
         }
+
         if (req.color() != null) v.setColor(req.color());
         if (req.size() != null) v.setSize(req.size());
         if (req.fit() != null) v.setFit(req.fit());
@@ -258,9 +301,112 @@ public class AdminProductService {
         if (req.status() != null) v.setStatus(req.status());
         if (req.sellerType() != null) v.setSellerType(req.sellerType());
         if (req.deliveryDate() != null) v.setDeliveryDate(req.deliveryDate());
+
+        // Update images
+        updateVariantImages(v, productId, images, retainedImageIds);
+
         variantRepository.save(v);
+
         return toVariantResponse(v);
     }
+
+
+    private void updateVariantImages(
+            ProductVariant variant,
+            Long productId,
+            List<MultipartFile> images,
+            List<Long> retainedImageIds
+    ) {
+        // No image changes requested.
+        if (images == null && retainedImageIds == null) {
+            return;
+        }
+
+        List<ProductVariantImage> existingImages =
+                variantImageRepository.findByVariantIdOrderByDisplayOrderAsc(
+                        variant.getId()
+                );
+
+        // Delete removed images.
+        if (retainedImageIds != null) {
+
+            // Validate that all retained IDs belong to this variant.
+            List<Integer> existingIds = existingImages.stream()
+                    .map(ProductVariantImage::getId)
+                    .toList();
+
+            boolean invalidId = retainedImageIds.stream()
+                    .anyMatch(id -> !existingIds.contains(id.intValue()));
+
+            if (invalidId) {
+                throw ApiException.badRequest(
+                        "Invalid image IDs for this variant"
+                );
+            }
+
+            List<ProductVariantImage> imagesToDelete = existingImages.stream()
+                    .filter(img -> !retainedImageIds.contains(
+                            img.getId().longValue()
+                    ))
+                    .toList();
+
+            for (ProductVariantImage img : imagesToDelete) {
+                fileStorageService.delete(img.getImageUrl());
+                variantImageRepository.delete(img);
+            }
+        }
+
+        // Upload new images.
+        if (images != null) {
+
+            int order = existingImages.stream()
+                    .filter(img -> retainedImageIds == null
+                            || retainedImageIds.contains(
+                            img.getId().longValue()
+                    ))
+                    .mapToInt(ProductVariantImage::getDisplayOrder)
+                    .max()
+                    .orElse(0) + 1;
+
+            for (MultipartFile file : images) {
+                if (file == null || file.isEmpty()) continue;
+
+                ProductVariantImage img = new ProductVariantImage();
+                img.setVariant(variant);
+                img.setImageUrl(
+                        fileStorageService.store(file, "productvariant")
+                );
+                img.setDisplayOrder(order++);
+                img.setProductId(productId);
+
+                variantImageRepository.save(img);
+            }
+        }
+    }
+//    @Transactional
+//    public VariantResponse updateVariant(Long productId, Long variantId, UpdateVariantRequest req) {
+//        ProductVariant v = variantRepository.findById(variantId)
+//                .orElseThrow(() -> ApiException.notFound("Variant not found"));
+//        if (!v.getProduct().getId().equals(productId)) {
+//            throw ApiException.notFound("Variant not found");
+//        }
+//        if (req.sku() != null && !req.sku().equals(v.getSku())) {
+//            if (variantRepository.existsBySkuAndIdNot(req.sku(), variantId)) {
+//                throw ApiException.conflict("Variant SKU already exists");
+//            }
+//            v.setSku(req.sku().trim());
+//        }
+//        if (req.color() != null) v.setColor(req.color());
+//        if (req.size() != null) v.setSize(req.size());
+//        if (req.fit() != null) v.setFit(req.fit());
+//        if (req.price() != null) v.setPrice(req.price());
+//        if (req.salePrice() != null) v.setSalePrice(req.salePrice());
+//        if (req.status() != null) v.setStatus(req.status());
+//        if (req.sellerType() != null) v.setSellerType(req.sellerType());
+//        if (req.deliveryDate() != null) v.setDeliveryDate(req.deliveryDate());
+//        variantRepository.save(v);
+//        return toVariantResponse(v);
+//    }
 
     @Transactional
     public void deleteVariant(Long productId, Long variantId) {
@@ -446,10 +592,10 @@ public class AdminProductService {
                 p.getSlug(),
                 p.getImage(),
                 p.getStatus(),
+                p.getDescription(),
                 p.getCategory() != null ? p.getCategory().getCategoryName() : null,
                 p.getSubcategory() != null ? p.getSubcategory().getSubcategoryName() : null,
-                min,
-                max,
+                p.getBasePrice(),
                 variants.size()
         );
     }
