@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface ProductVariantRepository extends JpaRepository<ProductVariant, Long> {
@@ -54,6 +56,24 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
             @Param("statuses") List<String> statuses,
             @Param("categoryId") Long categoryId,
             @Param("subcategoryId") Long subcategoryId);
+
+
+    @Query("""
+    SELECT v FROM ProductVariant v
+    WHERE v.product.id = :productId
+      AND (
+          :search IS NULL
+          OR LOWER(COALESCE(v.sku, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(COALESCE(v.color, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(COALESCE(v.size, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+          OR LOWER(COALESCE(v.fit, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+      )
+    """)
+    Page<ProductVariant> searchByProductId(
+            @Param("productId") Long productId,
+            @Param("search") String search,
+            Pageable pageable
+    );
 
     @Query("""
         SELECT DISTINCT v.fit FROM ProductVariant v

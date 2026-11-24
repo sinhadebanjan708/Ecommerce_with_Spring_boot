@@ -150,7 +150,15 @@ public final class ProductDtos {
             BigDecimal minPrice,
             BigDecimal maxPrice
     ) {}
-
+    public record VariantPageResponse(
+            List<VariantResponse> content,
+            int page,
+            int size,
+            long totalElements,
+            int totalPages,
+            boolean first,
+            boolean last
+    ) {}
     public record PageMeta(
             long total,
             int page,

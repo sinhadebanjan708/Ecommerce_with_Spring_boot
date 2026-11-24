@@ -8,7 +8,11 @@ import com.elvero.shop.util.SlugUtils;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -17,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import com.elvero.shop.specification.ProductSpecification;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 @Service
 public class AdminProductService {
@@ -179,20 +185,87 @@ public class AdminProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<VariantResponse> getProductVariants(Long productId) {
-
-        // Validate product existence
+    public VariantPageResponse getProductVariants(
+            Long productId,
+            int page,
+            int size,
+            String search,
+            String sortBy,
+            String sortDir
+    ) {
         if (!productRepository.existsById(productId)) {
             throw ApiException.notFound("Product not found");
         }
 
-        List<ProductVariant> variants =
-                variantRepository.findByProductId(productId);
+        if (page < 0) {
+            throw ApiException.badRequest("Page must be 0 or greater");
+        }
 
-        return variants.stream()
+        if (size < 1 || size > 100) {
+            throw ApiException.badRequest("Page size must be between 1 and 100");
+        }
+
+        // Allow only valid entity properties for sorting.
+        List<String> allowedSortFields = List.of(
+                "id", "sku", "price", "color", "size", "status", "deliveryDate"
+        );
+
+        if (!allowedSortFields.contains(sortBy)) {
+            throw ApiException.badRequest("Invalid sort field");
+        }
+
+        Sort.Direction direction =
+                "asc".equalsIgnoreCase(sortDir)
+                        ? Sort.Direction.ASC
+                        : Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(direction, sortBy)
+        );
+
+        String searchTerm = (search == null || search.isBlank())
+                ? null
+                : search.trim();
+
+        Page<ProductVariant> variantPage =
+                variantRepository.searchByProductId(
+                        productId,
+                        searchTerm,
+                        pageable
+                );
+
+        List<VariantResponse> content = variantPage.getContent()
+                .stream()
                 .map(this::toVariantResponse)
                 .toList();
+
+        return new VariantPageResponse(
+                content,
+                variantPage.getNumber(),
+                variantPage.getSize(),
+                variantPage.getTotalElements(),
+                variantPage.getTotalPages(),
+                variantPage.isFirst(),
+                variantPage.isLast()
+        );
     }
+//    @Transactional(readOnly = true)
+//    public List<VariantResponse> getProductVariants(Long productId) {
+//
+//        // Validate product existence
+//        if (!productRepository.existsById(productId)) {
+//            throw ApiException.notFound("Product not found");
+//        }
+//
+//        List<ProductVariant> variants =
+//                variantRepository.findByProductId(productId);
+//
+//        return variants.stream()
+//                .map(this::toVariantResponse)
+//                .toList();
+//    }
 
     @Transactional(readOnly = true)
     public VariantResponse getProductVariantById(
@@ -271,13 +344,118 @@ public class AdminProductService {
     }
 
 
+//    @Transactional
+//    public VariantResponse updateVariant(
+//            Long productId,
+//            Long variantId,
+//            UpdateVariantRequest req,
+//            List<MultipartFile> images,
+//            List<Long> retainedImageIds
+//    ) {
+//        ProductVariant v = variantRepository.findById(variantId)
+//                .orElseThrow(() -> ApiException.notFound("Variant not found"));
+//
+//        if (!v.getProduct().getId().equals(productId)) {
+//            throw ApiException.notFound("Variant not found");
+//        }
+//
+//        if (req.sku() != null && !req.sku().equals(v.getSku())) {
+//            if (variantRepository.existsBySkuAndIdNot(req.sku(), variantId)) {
+//                throw ApiException.conflict("Variant SKU already exists");
+//            }
+//            v.setSku(req.sku().trim());
+//        }
+//
+//        if (req.color() != null) v.setColor(req.color());
+//        if (req.size() != null) v.setSize(req.size());
+//        if (req.fit() != null) v.setFit(req.fit());
+//        if (req.price() != null) v.setPrice(req.price());
+//        if (req.salePrice() != null) v.setSalePrice(req.salePrice());
+//        if (req.status() != null) v.setStatus(req.status());
+//        if (req.sellerType() != null) v.setSellerType(req.sellerType());
+//        if (req.deliveryDate() != null) v.setDeliveryDate(req.deliveryDate());
+//
+//        // Update images
+//        updateVariantImages(v, productId, images, retainedImageIds);
+//
+//        variantRepository.save(v);
+//
+//        return toVariantResponse(v);
+//    }
+
+//    @Transactional
+//    public VariantResponse updateVariant(
+//            Long productId,
+//            Long variantId,
+//            UpdateVariantRequest req,
+//            List<MultipartFile> images
+//    ) {
+//        ProductVariant v = variantRepository.findById(variantId)
+//                .orElseThrow(() -> ApiException.notFound("Variant not found"));
+//
+//        if (!v.getProduct().getId().equals(productId)) {
+//            throw ApiException.notFound("Variant not found");
+//        }
+//
+//        if (req.sku() != null && !req.sku().equals(v.getSku())) {
+//            if (variantRepository.existsBySkuAndIdNot(req.sku(), variantId)) {
+//                throw ApiException.conflict("Variant SKU already exists");
+//            }
+//            v.setSku(req.sku().trim());
+//        }
+//
+//        if (req.color() != null) v.setColor(req.color());
+//        if (req.size() != null) v.setSize(req.size());
+//        if (req.fit() != null) v.setFit(req.fit());
+//        if (req.price() != null) v.setPrice(req.price());
+//        if (req.salePrice() != null) v.setSalePrice(req.salePrice());
+//        if (req.status() != null) v.setStatus(req.status());
+//        if (req.sellerType() != null) v.setSellerType(req.sellerType());
+//        if (req.deliveryDate() != null) v.setDeliveryDate(req.deliveryDate());
+//
+//        // Append newly uploaded images without deleting existing images
+//        if (images != null && !images.isEmpty()) {
+//
+//            List<ProductVariantImage> existingImages =
+//                    variantImageRepository
+//                            .findByVariantIdOrderByDisplayOrderAsc(variantId);
+//
+//            int order = existingImages.stream()
+//                    .mapToInt(ProductVariantImage::getDisplayOrder)
+//                    .max()
+//                    .orElse(0) + 1;
+//
+//            for (MultipartFile file : images) {
+//
+//                if (file == null || file.isEmpty()) {
+//                    continue;
+//                }
+//
+//                ProductVariantImage img = new ProductVariantImage();
+//                img.setVariant(v);
+//                img.setImageUrl(
+//                        fileStorageService.store(file, "productvariant")
+//                );
+//                img.setDisplayOrder(order++);
+//                img.setProductId(productId);
+//
+//                variantImageRepository.save(img);
+//            }
+//        }
+//
+//        variantRepository.save(v);
+//
+//        return toVariantResponse(v);
+//    }
+
+
     @Transactional
     public VariantResponse updateVariant(
             Long productId,
             Long variantId,
             UpdateVariantRequest req,
             List<MultipartFile> images,
-            List<Long> retainedImageIds
+            List<Long> deleteImageIds
     ) {
         ProductVariant v = variantRepository.findById(variantId)
                 .orElseThrow(() -> ApiException.notFound("Variant not found"));
@@ -286,6 +464,7 @@ public class AdminProductService {
             throw ApiException.notFound("Variant not found");
         }
 
+        // Update variant fields
         if (req.sku() != null && !req.sku().equals(v.getSku())) {
             if (variantRepository.existsBySkuAndIdNot(req.sku(), variantId)) {
                 throw ApiException.conflict("Variant SKU already exists");
@@ -302,13 +481,74 @@ public class AdminProductService {
         if (req.sellerType() != null) v.setSellerType(req.sellerType());
         if (req.deliveryDate() != null) v.setDeliveryDate(req.deliveryDate());
 
-        // Update images
-        updateVariantImages(v, productId, images, retainedImageIds);
+        // 1. Fetch existing images
+        List<ProductVariantImage> existingImages =
+                variantImageRepository
+                        .findByVariantIdOrderByDisplayOrderAsc(variantId);
+
+        // 2. Delete only the images explicitly requested
+        if (deleteImageIds != null && !deleteImageIds.isEmpty()) {
+
+            Set<Long> requestedIds = new HashSet<>(deleteImageIds);
+
+            // Ensure every requested image belongs to this variant
+            Set<Long> existingIds = existingImages.stream()
+                    .map(img -> img.getId().longValue())
+                    .collect(Collectors.toSet());
+
+            if (!existingIds.containsAll(requestedIds)) {
+                throw ApiException.badRequest(
+                        "One or more images do not belong to this variant"
+                );
+            }
+
+            for (ProductVariantImage img : existingImages) {
+
+                if (requestedIds.contains(img.getId().longValue())) {
+
+                    // Delete physical image file
+                    fileStorageService.delete(img.getImageUrl());
+
+                    // Delete database record
+                    variantImageRepository.delete(img);
+                }
+            }
+        }
+
+        // 3. Upload new images
+        if (images != null && !images.isEmpty()) {
+
+            int order = existingImages.stream()
+                    .filter(img -> deleteImageIds == null ||
+                            !deleteImageIds.contains(img.getId().longValue()))
+                    .mapToInt(ProductVariantImage::getDisplayOrder)
+                    .max()
+                    .orElse(0) + 1;
+
+            for (MultipartFile file : images) {
+
+                if (file == null || file.isEmpty()) {
+                    continue;
+                }
+
+                ProductVariantImage img = new ProductVariantImage();
+
+                img.setVariant(v);
+                img.setImageUrl(
+                        fileStorageService.store(file, "productvariant")
+                );
+                img.setDisplayOrder(order++);
+                img.setProductId(productId);
+
+                variantImageRepository.save(img);
+            }
+        }
 
         variantRepository.save(v);
 
         return toVariantResponse(v);
     }
+
 
 
     private void updateVariantImages(

@@ -127,6 +127,7 @@ public class GlobalExceptionHandler {
                 : ex.getMessage();
         // Keep client-facing message short; full detail only in logs
         log.debug("Unreadable request body: {}", detail);
+        log.error("JSON parsing failed", ex);
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(
                         "Invalid or malformed JSON request body",
