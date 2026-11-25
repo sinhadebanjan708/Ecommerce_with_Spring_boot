@@ -1,6 +1,8 @@
 package com.elvero.shop.entity;
 
 import jakarta.persistence.*;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,11 +36,16 @@ public class Order extends Timestamped {
     @Column(name = "payment_status", length = 40, nullable = false)
     private String paymentStatus;
 
+    @Column(name = "order_status", length = 40, nullable = false)
+    private String orderStatus;
+
     @Column(name = "payment_method", length = 40, nullable = false)
     private String paymentMethod;
 
     @Column(name = "total_amount", length = 10, nullable = false)
     private String totalAmount = "0";
+//    @Column(name = "total_amount", precision = 12, scale = 2, nullable = false)
+//    private BigDecimal totalAmount = BigDecimal.ZERO;
 
     @Column(name = "expected_delivery_date")
     private LocalDateTime expectedDeliveryDate;
