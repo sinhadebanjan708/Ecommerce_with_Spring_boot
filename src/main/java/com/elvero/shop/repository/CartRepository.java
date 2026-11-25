@@ -1,12 +1,31 @@
+
 package com.elvero.shop.repository;
 
 import com.elvero.shop.entity.Cart;
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.util.Optional;
 
-@Repository
 public interface CartRepository extends JpaRepository<Cart, Long> {
 
-    Optional<Cart> findFirstByUser_IdAndStatus(Long userId, String status);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT c
+        FROM Cart c
+        WHERE c.user.id = :userId
+          AND c.status = 'active'
+        """)
+    Optional<Cart> findActiveCartForUpdate(
+            @Param("userId") Long userId
+    );
+
+    Optional<Cart> findByUser_IdAndStatus(
+            Long userId,
+            String status
+    );
 }
