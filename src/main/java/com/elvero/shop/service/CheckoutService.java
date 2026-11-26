@@ -300,7 +300,7 @@ public class CheckoutService {
     ) {
 
         Cart cart = cartRepository
-                .findByUser_IdAndStatus(userId, ACTIVE_CART)
+                .findFirstByUser_IdAndStatusOrderByIdDesc(userId, ACTIVE_CART)
                 .orElseThrow(() ->
                         ApiException.badRequest("Cart not found")
                 );
@@ -469,7 +469,7 @@ public class CheckoutService {
         }
 
         Cart cart = cartRepository
-                .findByUser_IdAndStatus(userId, ACTIVE_CART)
+                .findFirstByUser_IdAndStatusOrderByIdDesc(userId, ACTIVE_CART)
                 .orElseThrow(() ->
                         ApiException.badRequest("Cart not found")
                 );

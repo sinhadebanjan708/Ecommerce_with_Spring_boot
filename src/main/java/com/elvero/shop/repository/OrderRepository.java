@@ -2,12 +2,16 @@ package com.elvero.shop.repository;
 
 import com.elvero.shop.entity.Order;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
@@ -24,5 +28,28 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("status") String status,
             @Param("paymentStatus") String paymentStatus,
             Pageable pageable
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT o
+        FROM Order o
+        WHERE o.id = :orderId
+        AND o.user.id = :userId
+    """)
+    Optional<Order> findByIdAndUserIdForUpdate(
+            @Param("orderId") Long orderId,
+            @Param("userId") Long userId
+    );
+
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+    SELECT o
+    FROM Order o
+    WHERE o.id = :orderId
+""")
+    Optional<Order> findByIdForUpdate(
+            @Param("orderId") Long orderId
     );
 }

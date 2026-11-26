@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface CartItemRepository
         extends JpaRepository<CartItem, Long> {
@@ -81,4 +82,39 @@ public interface CartItemRepository
             @Param("cartId") Long cartId,
             @Param("itemIds") Collection<Long> itemIds
     );
+
+    @Query("""
+        SELECT DISTINCT ci
+        FROM CartItem ci
+        JOIN FETCH ci.variant v
+        JOIN FETCH v.product p
+        LEFT JOIN FETCH v.images img
+        WHERE ci.cart.id = :cartId
+        ORDER BY ci.id DESC
+        """)
+    List<CartItem> findCartItemsWithDetails(
+            @Param("cartId") Long cartId
+    );
+    Optional<CartItem> findByCart_IdAndVariant_Id(
+            Long cartId,
+            Long variantId
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT ci
+        FROM CartItem ci
+        WHERE ci.id = :itemId
+          AND ci.cart.id = :cartId
+        """)
+    Optional<CartItem> findCartItemForUpdate(
+            @Param("itemId") Long itemId,
+            @Param("cartId") Long cartId
+    );
+
+    List<CartItem> findAllByCart_Id(Long cartId);
+
+    void deleteByIdAndCart_Id(Long itemId, Long cartId);
+
+    void deleteAllByCart_Id(Long cartId);
 }

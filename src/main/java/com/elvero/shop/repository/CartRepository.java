@@ -24,8 +24,9 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
             @Param("userId") Long userId
     );
 
-    Optional<Cart> findByUser_IdAndStatus(
+    Optional<Cart> findFirstByUser_IdAndStatusOrderByIdDesc(
             Long userId,
             String status
     );
+
 }

@@ -88,6 +88,12 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
             @Param("categoryId") Long categoryId,
             @Param("subcategoryId") Long subcategoryId);
 
+    Optional<ProductVariant> findByIdAndStatusAndProduct_Status(
+            Long id,
+            String variantStatus,
+            String productStatus
+    );
+
     @Query("""
         SELECT MIN(v.price), MAX(v.price) FROM ProductVariant v
         JOIN v.product p
@@ -100,4 +106,12 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
             @Param("statuses") List<String> statuses,
             @Param("categoryId") Long categoryId,
             @Param("subcategoryId") Long subcategoryId);
+
+
+    Optional<ProductVariant> findByIdAndStatus(
+            Long id,
+            String status
+    );
 }
+
+
